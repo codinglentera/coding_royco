@@ -1,1 +1,337 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cyber Warfare: Total Destruction</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+        body {
+            background-color: #080810;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        #game-container {
+            position: relative;
+            box-shadow: 0 0 30px rgba(0, 255, 200, 0.3);
+            border: 2px solid #00ffc8;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        canvas {
+            display: block;
+            background: radial-gradient(circle, #151525 0%, #05050a 100%);
+        }
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .hud-section {
+            display: flex;
+            justify-content: space-between;
+            font-size: 18px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            text-shadow: 0 0 8px rgba(0, 255, 255, 0.7);
+        }
+        .stat-box {
+            background: rgba(0, 0, 0, 0.6);
+            padding: 10px 20px;
+            border-radius: 5px;
+            border-left: 4px solid #00ffc8;
+        }
+        #game-over-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(5, 5, 10, 0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            transition: all 0.5s ease;
+        }
+        .hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        h1 {
+            font-size: 48px;
+            color: #ff3333;
+            text-shadow: 0 0 20px rgba(255, 51, 51, 0.6);
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+        p {
+            font-size: 20px;
+            margin-bottom: 25px;
+            color: #aaa;
+        }
+        button {
+            padding: 12px 35px;
+            font-size: 18px;
+            font-weight: bold;
+            background: transparent;
+            color: #00ffc8;
+            border: 2px solid #00ffc8;
+            border-radius: 5px;
+            cursor: pointer;
+            pointer-events: auto;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 15px rgba(0, 255, 200, 0.2);
+        }
+        button:hover {
+            background: #00ffc8;
+            color: #05050a;
+            box-shadow: 0 0 25px rgba(0, 255, 200, 0.6);
+        }
+    </style>
+</head>
+<body>
 
+    <div id="game-container">
+        <canvas id="gameCanvas" width="1000" height="600"></canvas>
+        
+        <div id="ui-layer">
+            <div class="hud-section">
+                <div class="stat-box">SKOR: <span id="score-val">0</span></div>
+                <div class="stat-box" style="border-left-color: #ff3333;">HEALTH: <span id="health-val">100</span>%</div>
+            </div>
+            <div class="hud-section" style="justify-content: center;">
+                <p style="font-size: 12px; color: #666; margin: 0;">Gunakan [W,A,S,D] atau [Panah] untuk Bergerak. [Klik Mouse] untuk Menembak.</p>
+            </div>
+        </div>
+
+        <div id="game-over-screen" class="hidden">
+            <h1 id="over-title">GAME OVER</h1>
+            <p>Skor Akhir Kamu: <span id="final-score">0</span></p>
+            <button id="restart-btn">MULAI PERANG</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // UI Elements
+        const scoreVal = document.getElementById('score-val');
+        const healthVal = document.getElementById('health-val');
+        const gameOverScreen = document.getElementById('game-over-screen');
+        const finalScore = document.getElementById('final-score');
+        const restartBtn = document.getElementById('restart-btn');
+        const overTitle = document.getElementById('over-title');
+
+        // Game State Variables
+        let player;
+        let bullets = [];
+        let enemyBullets = [];
+        let enemies = [];
+        let particles = [];
+        let keys = {};
+        let mouse = { x: 0, y: 0 };
+        let score = 0;
+        let isGameOver = true;
+        let spawnInterval;
+        let enemySpeedMultiplier = 1;
+
+        // --- CLASSES ---
+
+        // Player Entity
+        class Player {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.radius = 20;
+                this.speed = 5;
+                this.health = 100;
+                this.color = '#00ffc8';
+                this.angle = 0;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.angle);
+
+                // Menggambar badan pesawat/tank tempur cyberpunk
+                ctx.beginPath();
+                ctx.moveTo(25, 0);
+                ctx.lineTo(-15, -18);
+                ctx.lineTo(-10, 0);
+                ctx.lineTo(-15, 18);
+                ctx.closePath();
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = this.color;
+                ctx.fill();
+
+                // Inti Energi Tengah
+                ctx.beginPath();
+                ctx.arc(-2, 0, 6, 0, Math.PI * 2);
+                ctx.fillStyle = '#ffffff';
+                ctx.fill();
+                ctx.restore();
+            }
+
+            update() {
+                // Pergerakan Player Berdasarkan Input Keyboard
+                if (keys['w'] || keys['ArrowUp']) this.y -= this.speed;
+                if (keys['s'] || keys['ArrowDown']) this.y += this.speed;
+                if (keys['a'] || keys['ArrowLeft']) this.x -= this.speed;
+                if (keys['d'] || keys['ArrowRight']) this.x += this.speed;
+
+                // Batasan Layar (Boundary)
+                if (this.x < this.radius) this.x = this.radius;
+                if (this.x > canvas.width - this.radius) this.x = canvas.width - this.radius;
+                if (this.y < this.radius) this.y = this.radius;
+                if (this.y > canvas.height - this.radius) this.y = canvas.height - this.radius;
+
+                // Menghitung sudut rotasi menghadap ke kursor mouse
+                this.angle = Math.atan2(mouse.y - this.y, mouse.x - this.x);
+            }
+        }
+
+        // Bullet Entity
+        class Bullet {
+            constructor(x, y, angle, speed, color, isEnemy = false) {
+                this.x = x;
+                this.y = y;
+                this.angle = angle;
+                this.speed = speed;
+                this.radius = 4;
+                this.color = color;
+                this.isEnemy = isEnemy;
+                this.markedForDeletion = false;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = this.color;
+                ctx.fill();
+                ctx.restore();
+            }
+
+            update() {
+                this.x += Math.cos(this.angle) * this.speed;
+                this.y += Math.sin(this.angle) * this.speed;
+
+                // Hapus jika keluar layar
+                if (this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) {
+                    this.markedForDeletion = true;
+                }
+            }
+        }
+
+        // Enemy Entity (Polimorfisme sederhana berbasis tipe)
+        class Enemy {
+            constructor(x, y, type) {
+                this.x = x;
+                this.y = y;
+                this.type = type; // 'scout', 'fighter', 'boss'
+                this.markedForDeletion = false;
+                this.lastShot = Date.now();
+
+                // Konfigurasi berdasarkan tipe musuh
+                if (type === 'scout') {
+                    this.radius = 15;
+                    this.speed = (Math.random() * 1.5 + 2) * enemySpeedMultiplier;
+                    this.health = 1;
+                    this.color = '#ff3333';
+                    this.shootCooldown = 2000;
+                } else if (type === 'fighter') {
+                    this.radius = 22;
+                    this.speed = (Math.random() * 1 + 1) * enemySpeedMultiplier;
+                    this.health = 3;
+                    this.color = '#ff9900';
+                    this.shootCooldown = 1500;
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                
+                // Rotasi musuh menghadap player
+                let angle = Math.atan2(player.y - this.y, player.x - this.x);
+                ctx.rotate(angle);
+
+                ctx.beginPath();
+                if (this.type === 'scout') {
+                    // Segitiga tajam
+                    ctx.moveTo(18, 0);
+                    ctx.lineTo(-12, -12);
+                    ctx.lineTo(-12, 12);
+                } else {
+                    // Bentuk Hexagon tempur
+                    ctx.moveTo(22, 0);
+                    ctx.lineTo(0, -18);
+                    ctx.lineTo(-16, -12);
+                    ctx.lineTo(-16, 12);
+                    ctx.lineTo(0, 18);
+                }
+                ctx.closePath();
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = 12;
+                ctx.shadowColor = this.color;
+                ctx.fill();
+                ctx.restore();
+            }
+
+            update() {
+                // AI Sederhana: Mengejar posisi koordinat player
+                let angle = Math.atan2(player.y - this.y, player.x - this.x);
+                this.x += Math.cos(angle) * this.speed;
+                this.y += Math.sin(angle) * this.speed;
+
+                // AI Menembak secara berkala
+                let now = Date.now();
+                if (now - this.lastShot > this.shootCooldown) {
+                    this.shoot(angle);
+                    this.lastShot = now;
+                }
+            }
+
+            shoot(angle) {
+                // Musuh tipe fighter menembak, scout hanya mengejar (kamikaze)
+                if (this.type === 'fighter') {
+                    enemyBullets.push(new Bullet(this.x, this.y, angle, 5, '#ff9900', true));
+                }
+            }
+        }
+
+        // Particle System untuk efek ledakan (Explosion)
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.radius = Math.random() * 3 + 1;
+                // Vektor acak ledakan radial
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 4 + 1;
+                this.vx = Math.cos(angle) * speed;
