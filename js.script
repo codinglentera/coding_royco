@@ -1,1 +1,169 @@
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
 
+// Elemen UI
+const scoreElement = document.getElementById("score");
+const overlay = document.getElementById("overlay");
+const gameTitle = document.getElementById("game-title");
+const gameMessage = document.getElementById("game-message");
+const startBtn = document.getElementById("start-btn");
+
+// State Game
+let gameRunning = false;
+let score = 0;
+let gameSpeed = 5;
+let frameCount = 0;
+let obstacles = [];
+
+// Konfigurasi Player (Kotak Neon)
+const player = {
+    x: 100,
+    y: 200,
+    size: 30,
+    gravity: 0.6,
+    lift: -10,
+    velocity: 0,
+    color: "#00ffcc"
+};
+
+// Event Listeners untuk Kontrol
+window.addEventListener("keydown", (e) => {
+    if (e.code === "Space") {
+        jump();
+    }
+});
+canvas.addEventListener("touchstart", jump);
+canvas.addEventListener("mousedown", jump);
+
+startBtn.addEventListener("click", startGame);
+
+function jump() {
+    if (gameRunning) {
+        player.velocity = player.lift;
+    }
+}
+
+// Fungsi Memulai Game
+function startGame() {
+    // Reset State
+    score = 0;
+    gameSpeed = 6;
+    frameCount = 0;
+    obstacles = [];
+    player.y = 200;
+    player.velocity = 0;
+    scoreElement.innerText = score;
+    
+    // Sembunyikan Overlay
+    overlay.classList.add("hidden");
+    gameRunning = true;
+    
+    animate();
+}
+
+// Loop Utama Game
+function animate() {
+    if (!gameRunning) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    frameCount++;
+
+    // 1. Logika Player
+    player.velocity += player.gravity;
+    player.y += player.velocity;
+
+    // Batas Bawah & Atas Layar
+    if (player.y + player.size > canvas.height) {
+        player.y = canvas.height - player.size;
+        player.velocity = 0;
+    }
+    if (player.y < 0) {
+        player.y = 0;
+        player.velocity = 0;
+    }
+
+    // Gambar Player dengan efek glow
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = player.color;
+    ctx.fillStyle = player.color;
+    ctx.fillRect(player.x, player.y, player.size, player.size);
+
+    // 2. Logika Rintangan (Makin lama makin sering muncul & cepat)
+    let spawnRate = Math.max(40, 90 - Math.floor(score * 2)); // Tingkat kesulitan meningkat
+    if (frameCount % spawnRate === 0) {
+        generateObstacle();
+    }
+
+    // Naikkan kecepatan game secara berkala
+    if (frameCount % 500 === 0) {
+        gameSpeed += 0.5;
+    }
+
+    // Gerakkan & Gambar Rintangan
+    ctx.shadowColor = "#ff007f";
+    ctx.fillStyle = "#ff007f";
+    
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+        let obs = obstacles[i];
+        obs.x -= gameSpeed;
+
+        // Gambar Rintangan Atas & Bawah
+        ctx.fillRect(obs.x, 0, obs.width, obs.topHeight);
+        ctx.fillRect(obs.x, canvas.height - obs.bottomHeight, obs.width, obs.bottomHeight);
+
+        // Cek Skor Passing
+        if (!obs.passed && obs.x + obs.width < player.x) {
+            score++;
+            scoreElement.innerText = score;
+            obs.passed = true;
+        }
+
+        // Cek Tabrakan (Collision Detection)
+        if (
+            player.x < obs.x + obs.width &&
+            player.x + player.size > obs.x &&
+            (player.y < obs.topHeight || player.y + player.size > canvas.height - obs.bottomHeight)
+        ) {
+            gameOver();
+        }
+
+        // Hapus rintangan yang keluar layar
+        if (obs.x + obs.width < 0) {
+            obstacles.splice(i, 1);
+        }
+    }
+
+    // Reset shadow blur untuk performa
+    ctx.shadowBlur = 0;
+
+    requestAnimationFrame(animate);
+}
+
+// Fungsi Membuat Rintangan Acak
+function generateObstacle() {
+    const width = 45;
+    // Celah antar rintangan (makin tinggi skor, celah makin sempit!)
+    const gap = Math.max(95, 140 - Math.floor(score * 1.5)); 
+    
+    const minHeight = 40;
+    const maxHeight = canvas.height - gap - minHeight;
+    const topHeight = Math.floor(Math.random() * (maxHeight - minHeight + 1)) + minHeight;
+    const bottomHeight = canvas.width - gap - topHeight;
+
+    obstacles.push({
+        x: canvas.width,
+        width: width,
+        topHeight: topHeight,
+        bottomHeight: canvas.height - topHeight - gap,
+        passed: false
+    });
+}
+
+// Fungsi Game Over
+function gameOver() {
+    gameRunning = false;
+    gameTitle.innerText = "GAME OVER";
+    gameMessage.innerHTML = `Skor Kamu: <strong style="color:#00ffcc; font-size: 24px;">${score}</strong><br><br>Makin tinggi skor, celah rintangan akan menyempit dan laju game menjadi super cepat!`;
+    startBtn.innerText = "COBA LAGI";
+    overlay.classList.remove("hidden");
+}
