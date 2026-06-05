@@ -1,1 +1,91 @@
+body {
+    margin: 0;
+    padding: 0;
+    background-color: #121212;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    overflow: hidden;
+    color: #fff;
+}
 
+.game-container {
+    position: relative;
+    box-shadow: 0 0 30px rgba(0, 255, 204, 0.3);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+#gameCanvas {
+    background: linear-gradient(to bottom, #1a1a2e, #16213e);
+    display: block;
+}
+
+#score-board {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    font-size: 24px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: #00ffcc;
+    text-shadow: 0 0 10px rgba(0, 255, 204, 0.5);
+    z-index: 10;
+}
+
+.overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(15, 15, 26, 0.85);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 20;
+    transition: all 0.3s ease;
+}
+
+.overlay h1 {
+    font-size: 42px;
+    color: #ff007f;
+    margin-bottom: 10px;
+    text-shadow: 0 0 20px rgba(255, 0, 127, 0.6);
+    letter-spacing: 3px;
+}
+
+.overlay p {
+    font-size: 16px;
+    color: #cca7ff;
+    margin-bottom: 30px;
+    text-align: center;
+    max-width: 80%;
+}
+
+#start-btn {
+    padding: 12px 35px;
+    font-size: 18px;
+    font-weight: bold;
+    color: #121212;
+    background-color: #00ffcc;
+    border: none;
+    border-radius: 25px;
+    cursor: pointer;
+    box-shadow: 0 0 15px rgba(0, 255, 204, 0.4);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+#start-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 25px rgba(0, 255, 204, 0.8);
+}
+
+.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
